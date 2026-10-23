@@ -137,6 +137,71 @@
             }
         }
 
+        // SALVAR / EDITAR REGISTRO (Utiliza text/plain para evitar travamento de CORS no-cors)
+        async function saveGuideline(e) {
+            e.preventDefault();
+
+            const submitBtn = document.getElementById('submitBtn');
+            const originalBtnText = submitBtn ? submitBtn.innerHTML : '';
+            if (submitBtn) {
+                submitBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Gravando...`;
+                submitBtn.disabled = true;
+            }
+
+            const id = document.getElementById('guidelineId').value;
+            const payload = {
+                action: id ? 'update' : 'add',
+                id: id || '',
+                date: document.getElementById('formDate').value,
+                status: document.getElementById('formStatus').value,
+                title: document.getElementById('formTitle').value.trim(),
+                category: document.getElementById('formCategory').value,
+                reference: document.getElementById('formReference').value.trim(),
+                description: document.getElementById('formDescription').value.trim(),
+                link: document.getElementById('formLink').value.trim()
+            };
+
+            try {
+                await fetch(scriptUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify(payload)
+                });
+
+                showToast(id ? 'Orientação atualizada na Planilha!' : 'Nova orientação adicionada à Planilha!');
+                closeModal();
+                setTimeout(() => fetchDataFromSheet(), 1500);
+            } catch (err) {
+                alert('Erro ao comunicar com a Planilha: ' + err.message);
+            } finally {
+                if (submitBtn) {
+                    submitBtn.innerHTML = originalBtnText;
+                    submitBtn.disabled = false;
+                }
+            }
+        }
+
+        // EXCLUIR REGISTRO
+        async function deleteGuideline(id) {
+            if (!confirm('Deseja realmente excluir esta orientação da Planilha do Google?')) return;
+
+            showToast('Excluindo da planilha...', 'info');
+            try {
+                await fetch(scriptUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({ action: 'delete', id: id })
+                });
+
+                showToast('Orientação excluída!');
+                setTimeout(() => fetchDataFromSheet(), 1500);
+            } catch (err) {
+                alert('Erro ao excluir: ' + err.message);
+            }
+        }
+
         // REGRAS DE RENDERIZAÇÃO E FILTRAGEM
         function applyFilters() {
             const searchInput = document.getElementById('searchInput');
@@ -536,7 +601,7 @@
                         <option value="Aquisições Lei n°14.133/2021">Aquisições Lei n°14.133/2021</option>
                         <option value="Aquisições Simplificadas">Aquisições Simplificadas</option>
                         <option value="Baixas Contábeis">Baixas Contábeis</option>
-                        <option value="Enem">EMTI</option>
+                        <option value="EMTI">EMTI</option>
                         <option value="Enem">Enem</option>
                         <option value="Escola Transformação">Escola Transformação</option>
                         <option value="Feiras/Festivais de Livros">Feiras/Festivais de Livros</option>
@@ -696,7 +761,7 @@
                             <option value="Aquisições Lei n°14.133/2021">Aquisições Lei n°14.133/2021</option>
                             <option value="Aquisições Simplificadas">Aquisições Simplificadas</option>
                             <option value="Baixas Contábeis">Baixas Contábeis</option>
-                            <option value="Enem">EMTI</option>
+                            <option value="EMTI">EMTI</option>
                             <option value="Enem">Enem</option>
                             <option value="Escola Transformação">Escola Transformação</option>
                             <option value="Feiras/Festivais de Livros">Feiras/Festivais de Livros</option>
