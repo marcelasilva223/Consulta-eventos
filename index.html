@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Linha do Tempo - Prestação de Contas (Conectado ao Google Planilhas)</title>
     <!-- Tailwind CSS CDN -->
-    <script type="text/javascript" src="https://gc.kes.v2.scr.kaspersky-labs.com/7EA5E9BB-55E1-4C31-9C21-4943DDFED2E4/main.js?attr=Kijdf3gF0LLVvTSzoxeiCGeP8WBaADFnEHJtolX_Ckp0Dsz1g1UiLHwx_GIAi9LktWz9Ic_lF1ibtpGW9OwhJliZ6XQ1NhlBvVbYuMO3kVHz2IVFjWcFaNhl6LPSBmD6LOm-1n1ZBTXXT3tjN9xSueCmnE7cWSilsmm4LAKmLUyONoem-1KoFINyxElL-MIxoGxmDYa3NN6JWpWHkymRjURNb1bza8O81AyrxJNf8Z9Kgnl7AGxitRxAquz_9CO1YXdXySQuRsAjZnhl_FtSYcJzeoZrdc5OacIwHgl09SKv62Dt4PLPxRj4ebOpyvbt" charset="UTF-8"></script><script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Font Awesome CDN -->
@@ -40,9 +40,9 @@
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 
-    <!-- SCRIPT DA APLICAÇÃO (DEFINIDO NO HEAD PARA EVITAR ERROS DE CARREGAMENTO) -->
+    <!-- SCRIPT DA APLICAÇÃO -->
     <script>
-        // URL fixa do Google Apps Script (sem permissão de alteração via interface)
+        // URL fixa do Google Apps Script
         const scriptUrl = "https://script.google.com/macros/s/AKfycbwBXH_MHg62wS3HLAfTUUYjjPgTz33e4gGytDKERZKaVKy7DncED1atarj91GcThu72/exec";
 
         let guidelines = [];
@@ -50,30 +50,56 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             fetchDataFromSheet();
-            // Atualização automática silenciosa a cada 30 segundos
             setInterval(() => {
                 fetchDataFromSheet(true);
             }, 30000);
         });
 
-        function showApiWarning() {
-            const warningElem = document.getElementById('apiWarning');
-            const loadingElem = document.getElementById('loadingState');
-            const emptyElem = document.getElementById('emptyState');
+        // CONVERSOR DE DATAS UNIVERSAL (AAAA-MM-DD)
+        function parseToYYYYMMDD(dateVal) {
+            if (!dateVal) return '';
+            let str = String(dateVal).trim();
             
-            if (warningElem) warningElem.classList.remove('hidden');
-            if (loadingElem) loadingElem.classList.add('hidden');
-            if (emptyElem) emptyElem.classList.remove('hidden');
+            // Formato brasileiro DD/MM/AAAA ou DD-MM-AAAA
+            const brMatch = str.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})/);
+            if (brMatch) {
+                const day = brMatch[1].padStart(2, '0');
+                const month = brMatch[2].padStart(2, '0');
+                const year = brMatch[3];
+                return `${year}-${month}-${day}`;
+            }
+            
+            // Formato ISO AAAA-MM-DD
+            const isoMatch = str.match(/^(\d{4})[/.-](\d{1,2})[/.-](\d{1,2})/);
+            if (isoMatch) {
+                const year = isoMatch[1];
+                const month = isoMatch[2].padStart(2, '0');
+                const day = isoMatch[3].padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+            
+            // Converter string de data do JavaScript (ex: Mon May 25 2026...)
+            const d = new Date(dateVal);
+            if (!isNaN(d.getTime())) {
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+            
+            return '';
         }
 
-        // BUSCAR DADOS DO GOOGLE SHEETS VIA APPS SCRIPT
-        async function fetchDataFromSheet(isSilent = false) {
-            if (!scriptUrl) {
-                showApiWarning();
-                openConfigModal();
-                return;
-            }
+        // FORMATAR DATA PARA EXIBIÇÃO (DD/MM/AAAA)
+        function formatDate(dateStr) {
+            const yyyymmdd = parseToYYYYMMDD(dateStr);
+            if (!yyyymmdd) return dateStr || '';
+            const parts = yyyymmdd.split('-');
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
 
+        // BUSCAR DADOS DO GOOGLE SHEETS
+        async function fetchDataFromSheet(isSilent = false) {
             const syncIcon = document.getElementById('syncIcon');
             const loadingState = document.getElementById('loadingState');
             const timelineContainer = document.getElementById('timelineContainer');
@@ -111,76 +137,6 @@
             }
         }
 
-        // SALVAR / EDITAR REGISTRO
-        async function saveGuideline(e) {
-            e.preventDefault();
-            if (!scriptUrl) {
-                alert('Configure a URL do Google Apps Script antes de salvar!');
-                openConfigModal();
-                return;
-            }
-
-            const submitBtn = document.getElementById('submitBtn');
-            const originalBtnText = submitBtn ? submitBtn.innerHTML : '';
-            if (submitBtn) {
-                submitBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Gravando...`;
-                submitBtn.disabled = true;
-            }
-
-            const id = document.getElementById('guidelineId').value;
-            const payload = {
-                action: id ? 'update' : 'add',
-                id: id || '',
-                date: document.getElementById('formDate').value,
-                status: document.getElementById('formStatus').value,
-                title: document.getElementById('formTitle').value.trim(),
-                category: document.getElementById('formCategory').value,
-                reference: document.getElementById('formReference').value.trim(),
-                description: document.getElementById('formDescription').value.trim(),
-                link: document.getElementById('formLink').value.trim()
-            };
-
-            try {
-                await fetch(scriptUrl, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                showToast(id ? 'Orientação atualizada na Planilha!' : 'Nova orientação adicionada à Planilha!');
-                closeModal();
-                setTimeout(() => fetchDataFromSheet(), 1200);
-            } catch (err) {
-                alert('Erro ao comunicar com a Planilha: ' + err.message);
-            } finally {
-                if (submitBtn) {
-                    submitBtn.innerHTML = originalBtnText;
-                    submitBtn.disabled = false;
-                }
-            }
-        }
-
-        // EXCLUIR REGISTRO
-        async function deleteGuideline(id) {
-            if (!confirm('Deseja realmente excluir esta orientação da Planilha do Google?')) return;
-
-            showToast('Excluindo da planilha...', 'info');
-            try {
-                await fetch(scriptUrl, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'delete', id: id })
-                });
-
-                showToast('Orientação excluída!');
-                setTimeout(() => fetchDataFromSheet(), 1200);
-            } catch (err) {
-                alert('Erro ao excluir: ' + err.message);
-            }
-        }
-
         // REGRAS DE RENDERIZAÇÃO E FILTRAGEM
         function applyFilters() {
             const searchInput = document.getElementById('searchInput');
@@ -191,29 +147,35 @@
             const sortOrderInput = document.getElementById('sortOrder');
 
             const search = searchInput ? searchInput.value.toLowerCase().trim() : '';
-            const category = categoryFilter ? categoryFilter.value : '';
-            const status = statusFilter ? statusFilter.value : '';
+            const category = categoryFilter ? categoryFilter.value.toLowerCase().trim() : '';
+            const status = statusFilter ? statusFilter.value.toLowerCase().trim() : '';
             const dateFrom = dateFromInput ? dateFromInput.value : '';
             const dateTo = dateToInput ? dateToInput.value : '';
             const sortOrder = sortOrderInput ? sortOrderInput.value : 'desc';
 
             let filtered = guidelines.filter(item => {
+                const itemDateFormatted = parseToYYYYMMDD(item.date);
+                const itemCategory = item.category ? String(item.category).toLowerCase().trim() : '';
+                const itemStatus = item.status ? String(item.status).toLowerCase().trim() : '';
+
                 const matchesSearch = !search || 
                     (item.title && String(item.title).toLowerCase().includes(search)) || 
                     (item.description && String(item.description).toLowerCase().includes(search)) || 
                     (item.reference && String(item.reference).toLowerCase().includes(search)) ||
-                    (item.category && String(item.category).toLowerCase().includes(search));
+                    itemCategory.includes(search);
 
-                const matchesCategory = !category || item.category === category;
-                const matchesStatus = !status || item.status === status;
-                const matchesDateFrom = !dateFrom || item.date >= dateFrom;
-                const matchesDateTo = !dateTo || item.date <= dateTo;
+                const matchesCategory = !category || itemCategory === category;
+                const matchesStatus = !status || itemStatus === status;
+                const matchesDateFrom = !dateFrom || (itemDateFormatted && itemDateFormatted >= dateFrom);
+                const matchesDateTo = !dateTo || (itemDateFormatted && itemDateFormatted <= dateTo);
 
                 return matchesSearch && matchesCategory && matchesStatus && matchesDateFrom && matchesDateTo;
             });
 
             filtered.sort((a, b) => {
-                return sortOrder === 'asc' ? new Date(a.date) - new Date(b.date) : new Date(b.date) - new Date(a.date);
+                const dateA = parseToYYYYMMDD(a.date);
+                const dateB = parseToYYYYMMDD(b.date);
+                return sortOrder === 'asc' ? dateA.localeCompare(dateB) : dateB.localeCompare(dateA);
             });
 
             updateStats(filtered);
@@ -247,9 +209,9 @@
             const statForbidden = document.getElementById('statForbidden');
 
             if (statTotal) statTotal.innerText = dataList.length;
-            if (statAllowed) statAllowed.innerText = dataList.filter(i => i.status === 'Permitido').length;
-            if (statWarning) statWarning.innerText = dataList.filter(i => i.status === 'Ressalva').length;
-            if (statForbidden) statForbidden.innerText = dataList.filter(i => i.status === 'Proibido').length;
+            if (statAllowed) statAllowed.innerText = dataList.filter(i => String(i.status).trim() === 'Permitido').length;
+            if (statWarning) statWarning.innerText = dataList.filter(i => String(i.status).trim() === 'Ressalva').length;
+            if (statForbidden) statForbidden.innerText = dataList.filter(i => String(i.status).trim() === 'Proibido').length;
         }
 
         function renderTimeline(data) {
@@ -342,7 +304,8 @@
         }
 
         function getStatusStyle(status) {
-            switch (status) {
+            const st = String(status || '').trim();
+            switch (st) {
                 case 'Permitido':
                     return { label: 'Permitido (Pode)', badgeClass: 'bg-emerald-100 text-emerald-800 border border-emerald-300', badgeBg: 'bg-emerald-500', border: 'border-emerald-200 border-l-4 border-l-emerald-500', icon: 'fa-solid fa-circle-check', headerBg: 'bg-emerald-600' };
                 case 'Ressalva':
@@ -363,10 +326,10 @@
                 if (item) {
                     document.getElementById('modalTitle').innerText = 'Editar Orientação';
                     document.getElementById('guidelineId').value = item.id;
-                    document.getElementById('formDate').value = item.date;
-                    document.getElementById('formStatus').value = item.status;
+                    document.getElementById('formDate').value = parseToYYYYMMDD(item.date);
+                    document.getElementById('formStatus').value = String(item.status || '').trim();
                     document.getElementById('formTitle').value = item.title;
-                    document.getElementById('formCategory').value = item.category;
+                    document.getElementById('formCategory').value = String(item.category || '').trim();
                     document.getElementById('formReference').value = item.reference;
                     document.getElementById('formDescription').value = item.description;
                     document.getElementById('formLink').value = item.link || '';
@@ -415,33 +378,6 @@
             if (detailOverlay) detailOverlay.classList.add('hidden'); 
         }
 
-        function openConfigModal() {
-            const inputElem = document.getElementById('scriptUrlInput');
-            if (inputElem) inputElem.value = scriptUrl;
-            const configOverlay = document.getElementById('configModalOverlay');
-            if (configOverlay) configOverlay.classList.remove('hidden');
-        }
-
-        function closeConfigModal() { 
-            const configOverlay = document.getElementById('configModalOverlay');
-            if (configOverlay) configOverlay.classList.add('hidden'); 
-        }
-
-        function saveScriptUrl() {
-            const urlInput = document.getElementById('scriptUrlInput');
-            const url = urlInput ? urlInput.value.trim() : '';
-            if (!url) {
-                alert('Por favor, informe a URL válida do Apps Script!');
-                return;
-            }
-            scriptUrl = url;
-            localStorage.setItem('google_script_url', scriptUrl);
-            const warningElem = document.getElementById('apiWarning');
-            if (warningElem) warningElem.classList.add('hidden');
-            closeConfigModal();
-            fetchDataFromSheet();
-        }
-
         function toggleViewMode(mode) {
             viewMode = mode;
             const btnTimeline = document.getElementById('viewTimelineBtn');
@@ -471,13 +407,6 @@
             if (dateToInput) dateToInput.value = '';
             if (sortOrderInput) sortOrderInput.value = 'desc';
             applyFilters();
-        }
-
-        function formatDate(dateStr) {
-            if (!dateStr) return '';
-            const parts = String(dateStr).split('T')[0].split('-');
-            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-            return dateStr;
         }
 
         function escapeHtml(str) {
@@ -541,16 +470,6 @@
             </div>
         </div>
     </header>
-
-    <!-- ALERTA DE CONFIGURAÇÃO DA API -->
-    <div id="apiWarning" class="bg-amber-500/10 border-b border-amber-500/20 px-4 py-3 hidden">
-        <div class="max-w-7xl mx-auto flex items-center justify-between gap-3 text-xs text-amber-800">
-            <div class="flex items-center gap-2">
-                <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
-                <span><strong>Atenção:</strong> Insira a URL do seu Google Apps Script para sincronizar dados em tempo real com a Planilha do Google.</span>
-            </div>
-        </div>
-    </div>
 
     <!-- CONTEÚDO PRINCIPAL -->
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -617,6 +536,7 @@
                         <option value="Aquisições Lei n°14.133/2021">Aquisições Lei n°14.133/2021</option>
                         <option value="Aquisições Simplificadas">Aquisições Simplificadas</option>
                         <option value="Baixas Contábeis">Baixas Contábeis</option>
+                        <option value="Enem">EMTI</option>
                         <option value="Enem">Enem</option>
                         <option value="Escola Transformação">Escola Transformação</option>
                         <option value="Feiras/Festivais de Livros">Feiras/Festivais de Livros</option>
@@ -776,6 +696,7 @@
                             <option value="Aquisições Lei n°14.133/2021">Aquisições Lei n°14.133/2021</option>
                             <option value="Aquisições Simplificadas">Aquisições Simplificadas</option>
                             <option value="Baixas Contábeis">Baixas Contábeis</option>
+                            <option value="Enem">EMTI</option>
                             <option value="Enem">Enem</option>
                             <option value="Escola Transformação">Escola Transformação</option>
                             <option value="Feiras/Festivais de Livros">Feiras/Festivais de Livros</option>
