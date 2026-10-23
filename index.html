@@ -43,21 +43,21 @@
     <!-- SCRIPT DA APLICAÇÃO (DEFINIDO NO HEAD PARA EVITAR ERROS DE CARREGAMENTO) -->
     <script>
         // COLOQUE A URL DA SUA WEB APP DO GOOGLE APPS SCRIPT ENTRE AS ASPAS ABAIXO:
-        const DEFAULT_SCRIPT_URL = "COLE_SUA_URL_DO_APPS_SCRIPT_AQUI";
+        const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwBXH_MHg62wS3HLAfTUUYjjPgTz33e4gGytDKERZKaVKy7DncED1atarj91GcThu72/exec";
 
         let guidelines = [];
         let viewMode = 'timeline';
         let scriptUrl = localStorage.getItem('google_script_url') || DEFAULT_SCRIPT_URL;
 
         document.addEventListener('DOMContentLoaded', () => {
-            const isConfigured = scriptUrl && scriptUrl !== "COLE_SUA_URL_DO_APPS_SCRIPT_AQUI";
+            const isConfigured = scriptUrl && scriptUrl !== "https://script.google.com/macros/s/AKfycbwBXH_MHg62wS3HLAfTUUYjjPgTz33e4gGytDKERZKaVKy7DncED1atarj91GcThu72/exec";
             if (isConfigured) {
                 const inputElem = document.getElementById('scriptUrlInput');
                 if (inputElem) inputElem.value = scriptUrl;
                 fetchDataFromSheet();
                 // Atualização automática silenciosa a cada 30 segundos
                 setInterval(() => {
-                    if (scriptUrl && scriptUrl !== "COLE_SUA_URL_DO_APPS_SCRIPT_AQUI") {
+                    if (scriptUrl && scriptUrl !== "https://script.google.com/macros/s/AKfycbwBXH_MHg62wS3HLAfTUUYjjPgTz33e4gGytDKERZKaVKy7DncED1atarj91GcThu72/exec") {
                         fetchDataFromSheet(true);
                     }
                 }, 30000);
